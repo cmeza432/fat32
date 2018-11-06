@@ -11,14 +11,12 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#define WHITESPACE " \t\n"      // We want to split our command line up into tokens
-                                // so we need to define what delimits our tokens.
-                                // In this case  white space
-                                // will separate the tokens on our command line
-
-#define MAX_COMMAND_SIZE 255    // The maximum command-line size
-
-#define MAX_NUM_ARGUMENTS 5     // Mav shell only supports five arguments
+// Split up command lines into tokens from every whitespace
+#define WHITESPACE " \t\n"
+// The maximum command-line size
+#define MAX_COMMAND_SIZE 255
+// Mfs command prompt prompt supports max of 5 arguments
+#define MAX_NUM_ARGUMENTS 5
 
 #define BPB_BytesPerSec_Offset 11
 #define BPB_BytesPerSec_Size 2
@@ -129,44 +127,8 @@ void fileName(char final[100], char * file)
 int main()
 {
     char file_name[100];
-
-    // // BPB_BytesPerSec
-    // fseek(fp, BPB_BytesPerSec_Offset, SEEK_SET);
-    // fread(&BPB_BytesPerSec, BPB_BytesPerSec_Size, 1, fp);
-
-    // // BPB_secPerClus
-    // fseek(fp, BPB_SecPerClust_Offset, SEEK_SET);
-    // fread(&BPB_SecPerClust, BPB_SecPerClust_Size, 1, fp);
-
-    // // BPB_RsvdSecCnt
-    // fseek(fp, BPB_RsvdSecCnt_Offset, SEEK_SET);
-    // fread(&BPB_RsvdSecCnt, BPB_RsvdSecCnt_Size, 1, fp);
-
-    // // BPB_NumFATs
-    // fseek(fp, BPB_NumFATs_Offset, SEEK_SET);
-    // fread(&BPB_NumFATs, BPB_NumFATs_Size, 1, fp);
-
-    // // BPB_RootEntCnt
-    // fseek(fp, BPB_RootEntCnt_Offset, SEEK_SET);
-    // fread(&BPB_RootEntCnt, BPB_RootEntCnt_Size, 1, fp);
-
-    // // BPB_FATz32
-    // fseek(fp, BPB_FATz32_Offset, SEEK_SET);
-    // fread(&BPB_FATz32, BPB_FATz32_Size, 1, fp);
-
-    // // BS_VolLab
-    // fseek(fp, BS_VolLab_Offset, SEEK_SET);
-    // fread( &BS_VolLab, BS_VolLab_Size, 1, fp);
-
-    // // Calculating the address of the root directory
-    // RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
-
-    // // Print statement to check if everything initialized correctly
-    // //printf("RootClusterAddress %x\n", RootClusAddress );
-
-    // fseek( fp, RootClusAddress, SEEK_SET );
-    
     char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
+
     while(1)
     {
         // Print out the mfs prompt
@@ -214,12 +176,59 @@ int main()
             {
                 perror("Error opening file: ");
             }
+
+            // BPB_BytesPerSec
+            fseek(fp, BPB_BytesPerSec_Offset, SEEK_SET);
+            fread(&BPB_BytesPerSec, BPB_BytesPerSec_Size, 1, fp);
+
+            // BPB_secPerClus
+            fseek(fp, BPB_SecPerClust_Offset, SEEK_SET);
+            fread(&BPB_SecPerClust, BPB_SecPerClust_Size, 1, fp);
+
+            // BPB_RsvdSecCnt
+            fseek(fp, BPB_RsvdSecCnt_Offset, SEEK_SET);
+            fread(&BPB_RsvdSecCnt, BPB_RsvdSecCnt_Size, 1, fp);
+
+            // BPB_NumFATs
+            fseek(fp, BPB_NumFATs_Offset, SEEK_SET);
+            fread(&BPB_NumFATs, BPB_NumFATs_Size, 1, fp);
+
+            // BPB_RootEntCnt
+            fseek(fp, BPB_RootEntCnt_Offset, SEEK_SET);
+            fread(&BPB_RootEntCnt, BPB_RootEntCnt_Size, 1, fp);
+
+            // BPB_FATz32
+            fseek(fp, BPB_FATz32_Offset, SEEK_SET);
+            fread(&BPB_FATz32, BPB_FATz32_Size, 1, fp);
+
+            // BS_VolLab
+            fseek(fp, BS_VolLab_Offset, SEEK_SET);
+            fread( &BS_VolLab, BS_VolLab_Size, 1, fp);
+
+            // Calculating the address of the root directory
+            RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+        
+            fseek( fp, RootClusAddress, SEEK_SET );
         }
         ////////  info  ////////
         // Command to print out information about file system in hexadecimal and base 10
         else if(strcmp(token[0], "info")==0)
         {
-            printf("info working.\n");
+            // Can get entry to any directory sector, can be added to LBAToOffset function
+            // to return address for that sectors
+            int i;
+            for( i = 0; i < 16; i++ )
+            {
+                fread( &dir[i], sizeof( struct DirectoryEntry ), 1, fp );
+            }
+            // printing how clusters are layed out
+            for( i = 0; i < 16; i++)
+            {
+                char name[12];
+                memcpy( name, dir[i].DIR_Name, 11 );
+                name[11] = '\0';
+                printf("%s is in cluster low %d\n", name, dir[i].DIR_FirstClusterLow );
+            }
         }
         ////////  stat  ////////
         // Print out attributes and starting cluster numbers of file or directory name
@@ -266,23 +275,5 @@ int main()
 
         free(working_root);
     }
-
-    // Can get entry to any directory sector, can be added to LBAToOffset function
-    // to return address for that sectors
-    // int i;
-    // for( i = 0; i < 16; i++ )
-    // {
-    //     fread( &dir[i], sizeof( struct DirectoryEntry ), 1, fp );
-    // }
-
-    // // printing how clusters are layed out
-    // for(i = 0; i < 16; i++)
-    // {
-    //     char name[12];
-    //     memcpy( name, dir[i].DIR_Name, 11 );
-    //     name[11] = '\0';
-    //     printf("%s is in cluster low %d\n", name, dir[i].DIR_FirstClusterLow );
-    // }
-
     return 0;
 }
