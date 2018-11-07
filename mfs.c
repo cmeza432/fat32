@@ -39,7 +39,7 @@
 #define BS_VolLab_Offset 71
 #define BS_VolLab_Size 11
 
-int status;
+int status = 0;
 FILE *fp;
 
 struct __attribute__((__packed__)) DirectoryEntry
@@ -124,6 +124,66 @@ void fileName(char final[100], char * file)
     }
 }
 
+/*
+
+*/
+void open()
+{
+    // BPB_BytesPerSec
+    fseek(fp, BPB_BytesPerSec_Offset, SEEK_SET);
+    fread(&BPB_BytesPerSec, BPB_BytesPerSec_Size, 1, fp);
+
+    // BPB_secPerClus
+    fseek(fp, BPB_SecPerClust_Offset, SEEK_SET);
+    fread(&BPB_SecPerClust, BPB_SecPerClust_Size, 1, fp);
+
+    // BPB_RsvdSecCnt
+    fseek(fp, BPB_RsvdSecCnt_Offset, SEEK_SET);
+    fread(&BPB_RsvdSecCnt, BPB_RsvdSecCnt_Size, 1, fp);
+
+    // BPB_NumFATs
+    fseek(fp, BPB_NumFATs_Offset, SEEK_SET);
+    fread(&BPB_NumFATs, BPB_NumFATs_Size, 1, fp);
+
+    // BPB_RootEntCnt
+    fseek(fp, BPB_RootEntCnt_Offset, SEEK_SET);
+    fread(&BPB_RootEntCnt, BPB_RootEntCnt_Size, 1, fp);
+
+    // BPB_FATz32
+    fseek(fp, BPB_FATz32_Offset, SEEK_SET);
+    fread(&BPB_FATz32, BPB_FATz32_Size, 1, fp);
+
+    // BS_VolLab
+    fseek(fp, BS_VolLab_Offset, SEEK_SET);
+    fread( &BS_VolLab, BS_VolLab_Size, 1, fp);
+}
+
+/*
+*Function       : Info
+*Parameters     : None
+*Returns        : Prints out information on cluster
+*Desription     : Prints out information on global variables of cluster attributes
+*/
+void info()
+{
+        // Bytes per sector in Base 10 and Hex 
+        printf("\n\nBPB_BytesPerSec : %d\n", BPB_BytesPerSec);
+        printf("BPB_BytesPerSec : %x\n\n", BPB_BytesPerSec);
+        // Sectors per cluster in Base 10 and Hex
+        printf("BPB_SecPerClus : %d\n",BPB_SecPerClust);
+        printf("BPB_SecPerClus : %x\n\n", BPB_SecPerClust);
+        // Rsvd in Base 10 and Hex
+        printf("BPB_RsvdSecCnt : %d\n", BPB_RsvdSecCnt);
+        printf("BPB_RsvdSecCnt : %x\n\n", BPB_RsvdSecCnt);
+        // NumFats in Base 10 and Hex
+        printf("BPB_NumFATs : %d\n", BPB_NumFATs);
+        printf("BPB_NumFATs : %x\n\n", BPB_NumFATs);
+        // FATsz32 in Base 10 and Hex
+        printf("BPB_FATsz32 : %d\n", BPB_FATz32);
+        printf("BPB_FATsz32 : %x\n\n", BPB_FATz32);
+}
+
+
 int main()
 {
     char file_name[100];
@@ -159,10 +219,27 @@ int main()
             token_count++;
         }
 
+        // Handles blank input from user, if nothing entered then continue
+        if(token[0] == NULL)
+        {
+            continue;
+        }
         ////////  close  ////////
         // close fat32 image, if not open then output error. Any command
         // after close (except "open") shall result in error
-        if(strcmp(token[0], "close")==0)
+        else if(strcmp(token[0], "close")==0)
+        {
+            if(status == 1)
+            {
+                fclose(fp);
+                status = 0;
+            }
+            else
+            {
+                printf("Error: File system not open.\n");
+            }
+        }
+        else if(strcmp(token[0], "quit")==0)
         {
             exit(1);
         }
@@ -170,64 +247,35 @@ int main()
         // Open fat32 image, filenames shall not contain spaces and limited
         else if(strcmp(token[0], "open")==0)
         {
-            fp = fopen( "fat32.img", "r");
-
-            if( fp == NULL )
+            if(status == 0)
             {
-                perror("Error opening file: ");
+                fp = fopen( "fat32.img", "r");
+                status = 1;
+                if( fp == NULL )
+                {
+                    perror("Error: File system image not found.\n");
+                }
+                open();
+                // Calculating the address of the root directory
+                RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+                fseek( fp, RootClusAddress, SEEK_SET );
             }
-
-            // BPB_BytesPerSec
-            fseek(fp, BPB_BytesPerSec_Offset, SEEK_SET);
-            fread(&BPB_BytesPerSec, BPB_BytesPerSec_Size, 1, fp);
-
-            // BPB_secPerClus
-            fseek(fp, BPB_SecPerClust_Offset, SEEK_SET);
-            fread(&BPB_SecPerClust, BPB_SecPerClust_Size, 1, fp);
-
-            // BPB_RsvdSecCnt
-            fseek(fp, BPB_RsvdSecCnt_Offset, SEEK_SET);
-            fread(&BPB_RsvdSecCnt, BPB_RsvdSecCnt_Size, 1, fp);
-
-            // BPB_NumFATs
-            fseek(fp, BPB_NumFATs_Offset, SEEK_SET);
-            fread(&BPB_NumFATs, BPB_NumFATs_Size, 1, fp);
-
-            // BPB_RootEntCnt
-            fseek(fp, BPB_RootEntCnt_Offset, SEEK_SET);
-            fread(&BPB_RootEntCnt, BPB_RootEntCnt_Size, 1, fp);
-
-            // BPB_FATz32
-            fseek(fp, BPB_FATz32_Offset, SEEK_SET);
-            fread(&BPB_FATz32, BPB_FATz32_Size, 1, fp);
-
-            // BS_VolLab
-            fseek(fp, BS_VolLab_Offset, SEEK_SET);
-            fread( &BS_VolLab, BS_VolLab_Size, 1, fp);
-
-            // Calculating the address of the root directory
-            RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
-        
-            fseek( fp, RootClusAddress, SEEK_SET );
+            else
+            {
+                printf("Error: File system image already open.\n");
+            }
         }
         ////////  info  ////////
         // Command to print out information about file system in hexadecimal and base 10
         else if(strcmp(token[0], "info")==0)
         {
-            // Can get entry to any directory sector, can be added to LBAToOffset function
-            // to return address for that sectors
-            int i;
-            for( i = 0; i < 16; i++ )
+            if(status == 1)
             {
-                fread( &dir[i], sizeof( struct DirectoryEntry ), 1, fp );
+                info();
             }
-            // printing how clusters are layed out
-            for( i = 0; i < 16; i++)
+            else
             {
-                char name[12];
-                memcpy( name, dir[i].DIR_Name, 11 );
-                name[11] = '\0';
-                printf("%s is in cluster low %d\n", name, dir[i].DIR_FirstClusterLow );
+                printf("Error: File system image must be opened first\n");
             }
         }
         ////////  stat  ////////
@@ -235,42 +283,97 @@ int main()
         // If parameter is directory name, then size == 0. If name does not exits then output error
         else if(strcmp(token[0], "stat")==0)
         {
-            printf("stat working.\n");
+            if(status == 1)
+            {
+                printf("Attribute     Size    Sarting Cluser Number\n");
+                printf("%d            %d      %d");
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
         ////////  get  ////////
         // Retrieve file from fat 32 image and place it in your current working directory.
         // If the file or directory does not exist then output error
         else if(strcmp(token[0], "get")==0)
         {
-            printf("get working.\n");
+            if(status == 1)
+            {
+                printf("get working.\n");
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
         ////////  cd  ////////
         // Change the current working directory to the given directory. Supports relative
         // paths (cd ../name) and absolute paths
         else if(strcmp(token[0], "cd")==0)
         {
-            printf("cd working.\n");
+            if(status == 1)
+            {
+                printf("cd working.\n");
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
         ////////  ls  ////////
         // Lists the directory contents. Supports listing "." and ".."
         // Does not list deleted files or system volume names
         else if(strcmp(token[0], "ls")==0)
         {
-            printf("ls working.\n");
+            if(status == 1)
+            {
+                int i;
+                for( i = 0; i < 16; i++ )
+                {
+                    fread( &dir[i], sizeof( struct DirectoryEntry ), 1, fp );
+                }
+                // printing how clusters are layed out
+                for( i = 0; i < 16; i++)
+                {
+                    char name[12];
+                    memcpy( name, dir[i].DIR_Name, 11 );
+                    name[11] = '\0';
+                    printf("%s is in cluster low %d\n", name, dir[i].DIR_FirstClusterLow );
+                }
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
         ////////  read  ////////
         // Reads from the given file at the position, in bytes, specified byt position parameter
         // Ouput the number of bytes specified.
         else if(strcmp(token[0], "read")==0)
         {
-            printf("read working.\n");
+            if(status == 1)
+            {
+                printf("read working.\n");
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
         ////////  volume  ////////
         // Prints the volume name of the file system image.If there is volume name, its found in
         // reserved section. If no volume name, output error.
         else if(strcmp(token[0], "volume")==0)
         {
-            printf("volume working.\n");
+            if(status == 1)
+            {
+                printf("volume working.\n");
+            }
+            else
+            {
+                printf("Error: FIle system image must be opened first.\n");
+            }
         }
 
         free(working_root);
