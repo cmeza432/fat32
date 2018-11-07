@@ -107,14 +107,17 @@ void fileName(char final[100], char * file)
     // Split up string given by user up to the first period then copy the 
     // 8 spaces in between before adding the file type at the end of it
     strcpy(temp, file);
-    token = strtok(temp, ".");
+    token = strtok(temp, ".\0");
     strcpy(name, token);
-    token = strtok(NULL, ".");
-    strcpy(ext, token);
-    
     strcpy(final, name);
-    strcat(final, mid);
-    strcat(final, ext);
+    token = strtok(NULL, ".");
+
+    if(token != NULL)
+    {
+        strcpy(ext, token);
+        strcat(final, mid);
+        strcat(final, ext);
+    }
     // While loop to iterate over each character and uppercase it using
     // the toupper build in function
     while(*final)
@@ -125,7 +128,9 @@ void fileName(char final[100], char * file)
 }
 
 /*
-
+*Funciton       : Initializes all variables at open
+*Parameters     : None
+*Returns        : None
 */
 void open()
 {
@@ -329,9 +334,12 @@ int main()
             if(status == 1)
             {
                 int i;
+                int fat_num = BPB_RsvdSecCnt + (BPB_FATz32_Offset/BPB_BytesPerSec);
+                int check = LBAToOffset(fat_num);
+                printf("%d\n", check);
                 for( i = 0; i < 16; i++ )
                 {
-                    fread( &dir[i], sizeof( struct DirectoryEntry ), 1, fp );
+                    fread( &dir[i], check, 1, fp );
                 }
                 // printing how clusters are layed out
                 for( i = 0; i < 16; i++)
@@ -339,7 +347,7 @@ int main()
                     char name[12];
                     memcpy( name, dir[i].DIR_Name, 11 );
                     name[11] = '\0';
-                    printf("%s is in cluster low %d\n", name, dir[i].DIR_FirstClusterLow );
+                    printf("%s\n", name);
                 }
             }
             else
