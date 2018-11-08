@@ -98,38 +98,27 @@ int LBAToOffset(int32_t sector)
 *Returns        : The correctly formated name of the file name
 *Description    : Takes in file name string and returns the correct format of name to search by
 */
-void fileName(char final[100], char * file)
+void fileName(char final[12], char * input)
 {
-    char name[30];
-    char temp[50];
-    char ext[30];
-    char mid[10];
-    int size = 11 - strlen(file);
-    for(int i = 0; i <= size; i++)
-    {
-        mid[i] = ' ';
-    }
-    char * token;
-    // Split up string given by user up to the first period then copy the 
-    // 8 spaces in between before adding the file type at the end of it
-    strcpy(temp, file);
-    token = strtok(temp, ".\0");
-    strcpy(name, token);
-    strcpy(final, name);
-    token = strtok(NULL, ".");
+    memset( final, ' ', 12 );
 
-    if(token != NULL)
+    char *token = strtok( input, "." );
+
+    strncpy( final, token, strlen( token ) );
+
+    token = strtok( NULL, "." );
+
+    if( token )
     {
-        strcpy(ext, token);
-        strcat(final, mid);
-        strcat(final, ext);
+        strncpy( (char*)(final+8), token, strlen(token ) );
     }
-    // While loop to iterate over each character and uppercase it using
-    // the toupper build in function
-    while(*final)
+
+    final[11] = '\0';
+
+    int i;
+    for( i = 0; i < 11; i++ )
     {
-        *final = toupper((unsigned char)*final);
-        final++;
+        final[i] = toupper( final[i] );
     }
 }
 
@@ -342,7 +331,7 @@ int main()
         // paths (cd ../name) and absolute paths
         else if(strcmp(token[0], "cd")==0)
         {
-            char file_name[100];
+            char file_name[12];
             int size = (BPB_BytesPerSec*BPB_SecPerClust)/32;
             int location;
             int checker = 0;
@@ -361,7 +350,7 @@ int main()
                     {
                         char name[11];
                         memcpy(name, dir[k].DIR_Name, 11);
-                        //name[11] = '\0';
+                        name[11] = '\0';
                         if(strcmp(name, file_name)==0)
                         {
                             Current_d = nextLB(dir[k].DIR_FirstClusterLow);
