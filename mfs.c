@@ -103,7 +103,12 @@ void fileName(char final[100], char * file)
     char name[30];
     char temp[50];
     char ext[30];
-    char *mid = "     ";
+    char mid[10];
+    int size = 11 - strlen(file);
+    for(int i = 0; i <= size; i++)
+    {
+        mid[i] = ' ';
+    }
     char * token;
     // Split up string given by user up to the first period then copy the 
     // 8 spaces in between before adding the file type at the end of it
@@ -136,6 +141,7 @@ void fileName(char final[100], char * file)
 void filler(int address, struct DirectoryEntry * dir)
 {
     fseek(fp, address, SEEK_SET);
+    char name[12];
     for(int k = 0; k < 16; k++)
     {
         fread( &dir[k], sizeof(struct DirectoryEntry), 1, fp );
@@ -277,12 +283,12 @@ int main()
                 open();
                 // Calculating the address of the root directory
                 RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+                // Seek to that position
+                fseek( fp, RootClusAddress, SEEK_SET );
                 // Set current cluster
                 Current_d = RootClusAddress;
                 // Fill first directory struct with current
                 filler(Current_d, dir);
-                // Seek to that position
-                fseek( fp, RootClusAddress, SEEK_SET );
             }
             else
             {
@@ -341,9 +347,10 @@ int main()
             int location;
             int checker = 0;
             fileName(file_name, token[1]);
+            printf("%s\n", file_name);
             if(status == 1)
             {
-                if(token[0] == NULL)
+                if(token[1] == NULL)
                 {
                     Current_d = RootClusAddress;
                     filler(Current_d, dir);
@@ -352,7 +359,10 @@ int main()
                 {
                     for(int k = 0; k < 16; k++)
                     {
-                        if(strcmp(dir[k].DIR_Name, file_name)==0)
+                        char name[11];
+                        memcpy(name, dir[k].DIR_Name, 11);
+                        //name[11] = '\0';
+                        if(strcmp(name, file_name)==0)
                         {
                             Current_d = nextLB(dir[k].DIR_FirstClusterLow);
                             filler(Current_d, dir);
@@ -383,14 +393,17 @@ int main()
                 {
                     if(dir[k].Dir_Attr == 1 || dir[k].Dir_Attr == 16 || dir[k].Dir_Attr == 32)
                     {
-                        printf("%s\n", dir[k].DIR_Name);
+                        char name[12];
+                        memcpy(name, dir[k].DIR_Name, 11);
+                        name[11] = '\0';
+                        printf("%s\n", name);
                     }
                 }
                 
             }
             else
             {
-                printf("Error: FIle system image must be opened first.\n");
+                printf("Error: File system image must be opened first.\n");
             }
         }
         ////////  read  ////////
@@ -425,7 +438,7 @@ int main()
             }
             else
             {
-                printf("Error: FIle system image must be opened first.\n");
+                printf("Error: File system image must be opened first.\n");
             }
         }
 
