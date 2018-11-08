@@ -40,7 +40,6 @@
 #define BS_VolLab_Size 11
 
 int status = 0;
-int checker = 0;
 FILE *fp;
 
 struct __attribute__((__packed__)) DirectoryEntry
@@ -63,6 +62,7 @@ uint8_t BPB_NumFATs;
 uint32_t BPB_FATz32;
 uint16_t BPB_RootEntCnt;
 uint32_t RootClusAddress;
+uint32_t Current_d;
 char BS_VolLab[11];
 
 /*
@@ -125,6 +125,20 @@ void fileName(char final[100], char * file)
     {
         *final = toupper((unsigned char)*final);
         final++;
+    }
+}
+
+/* 
+*Function       : Fills directory from current cluster
+*Parameters     : Current sector and dir struct
+*Returns        : None
+*/
+void filler(int address, struct DirectoryEntry * dir)
+{
+    fseek(fp, address, SEEK_SET);
+    for(int k = 0; k < 16; k++)
+    {
+        fread( &dir[k], sizeof(struct DirectoryEntry), 1, fp );
     }
 }
 
@@ -263,6 +277,11 @@ int main()
                 open();
                 // Calculating the address of the root directory
                 RootClusAddress = (BPB_NumFATs * BPB_FATz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+                // Set current cluster
+                Current_d = RootClusAddress;
+                // Fill first directory struct with current
+                filler(Current_d, dir);
+                // Seek to that position
                 fseek( fp, RootClusAddress, SEEK_SET );
             }
             else
@@ -291,7 +310,7 @@ int main()
             if(status == 1)
             {
                 printf("Attribute     Size    Sarting Cluster Number\n");
-                printf("%d            %d      %d\n");
+                printf("%d       %d      %d\n");
             }
             else
             {
@@ -318,50 +337,56 @@ int main()
         else if(strcmp(token[0], "cd")==0)
         {
             char file_name[100];
+            int size = (BPB_BytesPerSec*BPB_SecPerClust)/32;
             int location;
+            int checker = 0;
+            fileName(file_name, token[1]);
             if(status == 1)
             {
-                fileName(file_name, token[1]);
-                for(int k = 0; k < 16; k++)
+                if(token[0] == NULL)
                 {
-                    if(strcmp(file_name, dir[k].DIR_Name) == 0)
+                    Current_d = RootClusAddress;
+                    filler(Current_d, dir);
+                }
+                else
+                {
+                    for(int k = 0; k < 16; k++)
                     {
-                        location = dir[k].DIR_FirstClusterLow;
-                        fseek(fp, LBAToOffset(location), SEEK_SET);
-                        checker = 1;
+                        if(strcmp(dir[k].DIR_Name, file_name)==0)
+                        {
+                            Current_d = nextLB(dir[k].DIR_FirstClusterLow);
+                            filler(Current_d, dir);
+                            checker = 1;
+                            break;
+                        }
                     }
                 }
                 if(checker == 0)
                 {
-                    printf("Directory doesnt exist.\n");
+                    printf("Directory not found.\n");
                 }
             }
             else
             {
                 printf("Error: FIle system image must be opened first.\n");
             }
+            checker = 0;
         }
         ////////  ls  ////////
-        // Lists the directory contents. Supports listing "." and ".."
+        // Lists the directory contents.
         // Does not list deleted files or system volume names
         else if(strcmp(token[0], "ls")==0)
         {
             if(status == 1)
             {
-                int i;
-                for( i = 0; i < 16; i++ )
+                for(int k = 0; k < 16; k++)
                 {
-                    fread( &dir[i], sizeof(struct DirectoryEntry), 1, fp );
+                    if(dir[k].Dir_Attr == 1 || dir[k].Dir_Attr == 16 || dir[k].Dir_Attr == 32)
+                    {
+                        printf("%s\n", dir[k].DIR_Name);
+                    }
                 }
-                //fseek(fp, RootClusAddress, SEEK_SET);
-                // printing how clusters are layed out
-                for( i = 0; i < 16; i++)
-                {
-                    char name[12];
-                    memcpy( name, dir[i].DIR_Name, 11);
-                    name[11] = '\0';
-                    printf("%s\n", name);
-                }
+                
             }
             else
             {
