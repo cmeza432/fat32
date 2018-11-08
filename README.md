@@ -1,2 +1,2 @@
 # fat32
-Homework 3 (OS)
+fat32 system, opens image file, cd and ls (not fully working), shows info in both hex and base 10, and closes file.
