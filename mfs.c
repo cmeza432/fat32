@@ -40,6 +40,7 @@
 #define BS_VolLab_Size 11
 
 int status = 0;
+int checker = 0;
 FILE *fp;
 
 struct __attribute__((__packed__)) DirectoryEntry
@@ -102,7 +103,7 @@ void fileName(char final[100], char * file)
     char name[30];
     char temp[50];
     char ext[30];
-    char *mid = "        ";
+    char *mid = "     ";
     char * token;
     // Split up string given by user up to the first period then copy the 
     // 8 spaces in between before adding the file type at the end of it
@@ -191,7 +192,6 @@ void info()
 
 int main()
 {
-    char file_name[100];
     char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
 
     while(1)
@@ -290,8 +290,8 @@ int main()
         {
             if(status == 1)
             {
-                printf("Attribute     Size    Sarting Cluser Number\n");
-                printf("%d            %d      %d");
+                printf("Attribute     Size    Sarting Cluster Number\n");
+                printf("%d            %d      %d\n");
             }
             else
             {
@@ -317,9 +317,24 @@ int main()
         // paths (cd ../name) and absolute paths
         else if(strcmp(token[0], "cd")==0)
         {
+            char file_name[100];
+            int location;
             if(status == 1)
             {
-                printf("cd working.\n");
+                fileName(file_name, token[1]);
+                for(int k = 0; k < 16; k++)
+                {
+                    if(strcmp(file_name, dir[k].DIR_Name) == 0)
+                    {
+                        location = dir[k].DIR_FirstClusterLow;
+                        fseek(fp, LBAToOffset(location), SEEK_SET);
+                        checker = 1;
+                    }
+                }
+                if(checker == 0)
+                {
+                    printf("Directory doesnt exist.\n");
+                }
             }
             else
             {
@@ -334,18 +349,16 @@ int main()
             if(status == 1)
             {
                 int i;
-                int fat_num = BPB_RsvdSecCnt + (BPB_FATz32_Offset/BPB_BytesPerSec);
-                int check = LBAToOffset(fat_num);
-                printf("%d\n", check);
                 for( i = 0; i < 16; i++ )
                 {
-                    fread( &dir[i], check, 1, fp );
+                    fread( &dir[i], sizeof(struct DirectoryEntry), 1, fp );
                 }
+                //fseek(fp, RootClusAddress, SEEK_SET);
                 // printing how clusters are layed out
                 for( i = 0; i < 16; i++)
                 {
                     char name[12];
-                    memcpy( name, dir[i].DIR_Name, 11 );
+                    memcpy( name, dir[i].DIR_Name, 11);
                     name[11] = '\0';
                     printf("%s\n", name);
                 }
@@ -376,7 +389,14 @@ int main()
         {
             if(status == 1)
             {
-                printf("volume working.\n");
+                if(BS_VolLab != NULL)
+                {
+                    printf("Volume name of the file is %s.\n", BS_VolLab);
+                }
+                else
+                {
+                    printf("Error: Volume name not found.");
+                }
             }
             else
             {
