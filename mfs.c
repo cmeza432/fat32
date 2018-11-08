@@ -336,10 +336,9 @@ int main()
             int location;
             int checker = 0;
             fileName(file_name, token[1]);
-            printf("%s\n", file_name);
             if(status == 1)
             {
-                if(token[1] == NULL)
+                if(token_count < 2)
                 {
                     Current_d = RootClusAddress;
                     filler(Current_d, dir);
@@ -348,12 +347,12 @@ int main()
                 {
                     for(int k = 0; k < 16; k++)
                     {
-                        char name[11];
+                        char name[12];
                         memcpy(name, dir[k].DIR_Name, 11);
                         name[11] = '\0';
                         if(strcmp(name, file_name)==0)
                         {
-                            Current_d = nextLB(dir[k].DIR_FirstClusterLow);
+                            Current_d = LBAToOffset(dir[k].DIR_FirstClusterLow);
                             filler(Current_d, dir);
                             checker = 1;
                             break;
